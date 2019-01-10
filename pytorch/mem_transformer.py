@@ -431,6 +431,14 @@ class RelPartialLearnableDecoderLayer(nn.Module):
 
 
 class AdaptiveEmbedding(nn.Module):
+    """
+    Implements Adaptive Input Repersentations fro Nerual Language Modelling ICLR19
+
+    The major idea is that word embeddings can be grouped by frequency, where groups for low frequency words have
+    smaller embedding sizes.  Then they can be up-projected to be the same size across all groups.
+    The main benefit to this is this trick can also be used in the softmax as well and doing this on the
+    input embeddings allows both sets of embeddings to be tied.
+    """
     def __init__(self, n_token, d_embed, d_proj, cutoffs, div_val=1, 
                  sample_softmax=False):
         super(AdaptiveEmbedding, self).__init__()
