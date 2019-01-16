@@ -12,6 +12,8 @@ sys.path.append('utils')
 from proj_adaptive_softmax import ProjectedAdaptiveLogSoftmax
 from log_uniform_sampler import LogUniformSampler, sample_logits
 
+from logging_wrapper import log_shape_dtype
+
 class PositionalEmbedding(nn.Module):
     def __init__(self, demb):
         super(PositionalEmbedding, self).__init__()
@@ -21,6 +23,7 @@ class PositionalEmbedding(nn.Module):
         inv_freq = 1 / (10000 ** (torch.arange(0.0, demb, 2.0) / demb))
         self.register_buffer('inv_freq', inv_freq)
 
+    @log_shape_dtype
     def forward(self, pos_seq, bsz=None):
         sinusoid_inp = torch.ger(pos_seq, self.inv_freq)
         pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
@@ -50,6 +53,7 @@ class PositionwiseFF(nn.Module):
 
         self.pre_lnorm = pre_lnorm
 
+    @log_shape_dtype
     def forward(self, inp):
         if self.pre_lnorm:
             ##### layer normalization + positionwise feed-forward
@@ -89,6 +93,7 @@ class MultiHeadAttn(nn.Module):
 
         self.pre_lnorm = pre_lnorm
 
+    @log_shape_dtype
     def forward(self, h, attn_mask=None, mems=None):
         ##### multihead attention
         # [hlen x bsz x n_head x d_head]
@@ -215,6 +220,7 @@ class RelPartialLearnableMultiHeadAttn(RelMultiHeadAttn):
 
         self.r_net = nn.Linear(self.d_model, self.n_head * self.d_head, bias=False)
 
+    @log_shape_dtype
     def forward(self, w, r, r_w_bias, r_r_bias, attn_mask=None, mems=None):
         qlen, rlen, bsz = w.size(0), r.size(0), w.size(1)
 
@@ -294,6 +300,7 @@ class RelLearnableMultiHeadAttn(RelMultiHeadAttn):
     def __init__(self, *args, **kwargs):
         super(RelLearnableMultiHeadAttn, self).__init__(*args, **kwargs)
 
+    @log_shape_dtype
     def forward(self, w, r_emb, r_w_bias, r_bias, attn_mask=None, mems=None):
         # r_emb: [klen, n_head, d_head], used for term B
         # r_w_bias: [n_head, d_head], used for term C
@@ -383,6 +390,7 @@ class DecoderLayer(nn.Module):
         self.pos_ff = PositionwiseFF(d_model, d_inner, dropout, 
                                      pre_lnorm=kwargs.get('pre_lnorm'))
 
+    @log_shape_dtype
     def forward(self, dec_inp, dec_attn_mask=None, mems=None):
 
         output = self.dec_attn(dec_inp, attn_mask=dec_attn_mask,
@@ -400,7 +408,8 @@ class RelLearnableDecoderLayer(nn.Module):
                                          **kwargs)
         self.pos_ff = PositionwiseFF(d_model, d_inner, dropout, 
                                      pre_lnorm=kwargs.get('pre_lnorm'))
-
+    
+    @log_shape_dtype
     def forward(self, dec_inp, r_emb, r_w_bias, r_bias, dec_attn_mask=None, mems=None):
 
         output = self.dec_attn(dec_inp, r_emb, r_w_bias, r_bias,
@@ -420,6 +429,7 @@ class RelPartialLearnableDecoderLayer(nn.Module):
         self.pos_ff = PositionwiseFF(d_model, d_inner, dropout, 
                                      pre_lnorm=kwargs.get('pre_lnorm'))
 
+    @log_shape_dtype
     def forward(self, dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask=None, mems=None):
 
         output = self.dec_attn(dec_inp, r, r_w_bias, r_r_bias,
@@ -469,6 +479,7 @@ class AdaptiveEmbedding(nn.Module):
                 self.emb_layers.append(nn.Embedding(r_idx-l_idx, d_emb_i))
                 self.emb_projs.append(nn.Parameter(torch.Tensor(d_proj, d_emb_i)))
 
+    @log_shape_dtype
     def forward(self, inp):
         if self.div_val == 1:
             embed = self.emb_layers[0](inp)
@@ -647,6 +658,7 @@ class MemTransformerLM(nn.Module):
 
         return new_mems
 
+    @log_shape_dtype
     def _forward(self, dec_inp, mems=None):
         qlen, bsz = dec_inp.size()
 
@@ -742,6 +754,7 @@ class MemTransformerLM(nn.Module):
 
         return core_out, new_mems
 
+    @log_shape_dtype
     def forward(self, data, target, *mems):
         # nn.DataParallel does not allow size(0) tensors to be broadcasted.
         # So, have to initialize size(0) mems inside the model forward.
