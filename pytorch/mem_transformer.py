@@ -25,6 +25,13 @@ class PositionalEmbedding(nn.Module):
 
     @log_shape_dtype
     def forward(self, pos_seq, bsz=None):
+        """
+        Args:
+            pos_seq : shape [seq_len] , dtype float32
+            bsz     : optional int (default=1), for tiling along batch axis
+        Outputs:
+            pos_emb : shape [seq_len, bsz(=1), self.demb], dtype float32
+        """
         sinusoid_inp = torch.ger(pos_seq, self.inv_freq)
         pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
 
@@ -55,6 +62,12 @@ class PositionwiseFF(nn.Module):
 
     @log_shape_dtype
     def forward(self, inp):
+        """
+        Args:
+            inp : shape [..., d_model]
+        Outputs:
+            output : shape [..., d_model]
+        """
         if self.pre_lnorm:
             ##### layer normalization + positionwise feed-forward
             core_out = self.CoreNet(self.layer_norm(inp))
@@ -222,6 +235,9 @@ class RelPartialLearnableMultiHeadAttn(RelMultiHeadAttn):
 
     @log_shape_dtype
     def forward(self, w, r, r_w_bias, r_r_bias, attn_mask=None, mems=None):
+        """
+        Same as `RelPartialLearnableDecoderLayer` - which calls this module
+        """
         qlen, rlen, bsz = w.size(0), r.size(0), w.size(1)
 
         if mems is not None:
@@ -431,6 +447,17 @@ class RelPartialLearnableDecoderLayer(nn.Module):
 
     @log_shape_dtype
     def forward(self, dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask=None, mems=None):
+        """
+        Args:
+            dec_inp : shape [batch_size, num_layers, d_model]
+            r       : shape [batch_size, 1, d_model]
+            r_w_bias: shape [n_head, d_head]
+            r_r_bias: shape [n_head, d_head]
+            dec_attn_mask: shape [qlen, klen, 1]
+            mems: shape [0] most times ?
+        Outputs:
+            output : shape [batch_size, num_layers, d_model]
+        """
 
         output = self.dec_attn(dec_inp, r, r_w_bias, r_r_bias,
                                attn_mask=dec_attn_mask,
@@ -756,6 +783,14 @@ class MemTransformerLM(nn.Module):
 
     @log_shape_dtype
     def forward(self, data, target, *mems):
+        """
+        Args:
+            data : shape [seq_len, batch_size]
+            target : shape [seq_len, batch_size]
+        Outputs:
+            loss : shape [seq_len, batch_size]
+            *mems: list of memories of shape [seq_len, batch_size, d_model]
+        """
         # nn.DataParallel does not allow size(0) tensors to be broadcasted.
         # So, have to initialize size(0) mems inside the model forward.
         # Moreover, have to return new_mems to allow nn.DataParallel to piece
