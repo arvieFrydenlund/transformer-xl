@@ -449,14 +449,14 @@ class RelPartialLearnableDecoderLayer(nn.Module):
     def forward(self, dec_inp, r, r_w_bias, r_r_bias, dec_attn_mask=None, mems=None):
         """
         Args:
-            dec_inp : shape [batch_size, num_layers, d_model]
-            r       : shape [batch_size, 1, d_model]
-            r_w_bias: shape [n_head, d_head]
-            r_r_bias: shape [n_head, d_head]
+            dec_inp      : shape [batch_size, num_layers, d_model]
+            r            : shape [batch_size, 1, d_model]
+            r_w_bias     : shape [n_head, d_head]
+            r_r_bias     : shape [n_head, d_head]
             dec_attn_mask: shape [qlen, klen, 1]
-            mems: shape [0] most times ?
+            mems         : shape [0] most times ?
         Outputs:
-            output : shape [batch_size, num_layers, d_model]
+            output       : shape [batch_size, num_layers, d_model]
         """
 
         output = self.dec_attn(dec_inp, r, r_w_bias, r_r_bias,
@@ -546,6 +546,33 @@ class MemTransformerLM(nn.Module):
                  cutoffs=[], adapt_inp=False,
                  same_length=False, attn_type=0, clamp_len=-1, 
                  sample_softmax=-1):
+        """
+        Args:
+            n_token    : number of unique tokens i.e. vocab size
+            n_layer    : number of total transformer layers
+            n_head     : number of heads
+            d_model    : model hidden size dimension (original transformer paper has 1 hidden size which is the same across all layers)
+            d_head     : head dimension
+            d_inner    : hidden size for inner feedforward layer in `PositionWiseFF`
+            dropout    : dropout probability (drop probability) global
+            dropoatt   : drop probability for attention
+            tie_weight : whether or not to tie softmax and word embedding weights
+            d_embed    : embedding dimension, usually equal to `d_model`
+            div_val    : divident value for adaptive input and softmax
+            tie_projs  : tie them projections
+            pre_lnorm  : apply layer norm to input instead of the output
+            tgt_len    : number of tokens to predict
+            ext_len    : length of the extended context
+            mem_len    : length of retained previous heads
+            cutoffs    : for `ProjectedAdapativeSoftmax`, we dont need it (maybe ??)
+            adapt_inp  : set to False throughout
+            same_length: whether or not to use the same attention length for all tokens
+            attn_type  : attention type. 0 for ours,      1 for Shaw et al, '
+                        '2 for Vaswani et al, 3 for Al Rfou et al.
+            clamp_len     : use the same positional embeddings after `clamp_len` i.e. max length for positional embeddings
+            sample_softmax: meh w.e. - just says the number of samples off the softmax, if set to -1, no sampling is done
+            
+        """
         super(MemTransformerLM, self).__init__()
         self.n_token = n_token
 
